@@ -25,23 +25,7 @@ def load_sections(config: JSONDict) -> list[SectionRecord]:
     path = config["data"]["sections_path"]
     if not path:
         raise ValueError("data.sections_path is required for jsonl mode")
-    records: list[SectionRecord] = []
-    with Path(path).open("r", encoding="utf-8") as handle:
-        for line in handle:
-            row = json.loads(line)
-            records.append(
-                SectionRecord(
-                    section_id=row["section_id"],
-                    code_name=row.get("code_name", ""),
-                    chapter=row.get("chapter", ""),
-                    article=row.get("article", ""),
-                    section_number=row["section_number"],
-                    section_title=row.get("section_title", ""),
-                    section_text=row["section_text"],
-                    effective_date=row.get("effective_date"),
-                )
-            )
-    return records
+    return load_section_jsonl(path)
 
 
 def load_qa(config: JSONDict) -> list[QAExample]:
@@ -91,3 +75,40 @@ def save_windows(path: str | Path, windows: list[WindowExample]) -> None:
         for item in windows
     ]
     save_jsonl(path, rows)
+
+
+def section_to_row(section: SectionRecord) -> JSONDict:
+    return {
+        "section_id": section.section_id,
+        "code_name": section.code_name,
+        "chapter": section.chapter,
+        "article": section.article,
+        "section_number": section.section_number,
+        "section_title": section.section_title,
+        "section_text": section.section_text,
+        "effective_date": section.effective_date,
+    }
+
+
+def load_section_jsonl(path: str | Path) -> list[SectionRecord]:
+    records: list[SectionRecord] = []
+    with Path(path).open("r", encoding="utf-8") as handle:
+        for line in handle:
+            row = json.loads(line)
+            records.append(
+                SectionRecord(
+                    section_id=row["section_id"],
+                    code_name=row.get("code_name", ""),
+                    chapter=row.get("chapter", ""),
+                    article=row.get("article", ""),
+                    section_number=row["section_number"],
+                    section_title=row.get("section_title", ""),
+                    section_text=row["section_text"],
+                    effective_date=row.get("effective_date"),
+                )
+            )
+    return records
+
+
+def save_sections_jsonl(path: str | Path, sections: list[SectionRecord]) -> None:
+    save_jsonl(path, [section_to_row(section) for section in sections])

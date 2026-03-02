@@ -40,6 +40,24 @@ python3 scripts/run_overnight_pilot.py --config configs/overnight_pilot.yaml
 
 Artifacts are written to `runs/overnight_pilot/`.
 
+## Cached California slice
+
+For repeated GPU runs, preprocess the California landlord-tenant slice once and
+then run from the cached JSONL instead of rescanning `reglab/statecodes` every
+time:
+
+```bash
+python3 scripts/cache_statecodes_sections.py \
+  --config configs/gpu_statecodes_large.yaml \
+  --output data/cache/ca_civ_landlord_tenant_sections.jsonl
+python3 scripts/run_overnight_pilot.py \
+  --config configs/gpu_statecodes_large_cached.yaml
+```
+
+The cache script also writes a small metadata file alongside the JSONL. The
+cached GPU config keeps all run outputs under the repo in
+`runs/gpu_statecodes_large_cached/`.
+
 ## Research framing
 
 The paper-style motivation, related work positioning, method, experimental
@@ -117,3 +135,5 @@ Each line should contain:
 - The citation probe is the primary overnight metric. QA is optional and requires labeled examples.
 - The default embedding backend for `embed-sim` uses TF-IDF to avoid a second large model download during pilot runs.
 - Each pipeline run now saves `graph_stats.json` and `citation_graph.png` in the output directory.
+- MLM training logs are written to TensorBoard under each condition's `tb/` directory.
+- The GPU configs keep one retained checkpoint per condition plus the final saved model.

@@ -13,6 +13,7 @@ develop-eggs/
 dist/
 downloads/
 runs/
+data/cache/
 eggs/
 .eggs/
 lib/

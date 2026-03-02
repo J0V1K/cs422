@@ -116,9 +116,11 @@ def train_mlm(
         per_device_train_batch_size=int(config["training"]["per_device_train_batch_size"]),
         gradient_accumulation_steps=int(config["training"]["gradient_accumulation_steps"]),
         logging_steps=int(config["training"]["logging_steps"]),
+        logging_dir=str(output_dir / "tb"),
+        save_strategy=str(config["training"].get("save_strategy", "epoch")),
         save_total_limit=int(config["training"]["save_total_limit"]),
         fp16=bool(config["training"]["fp16"]),
-        report_to=[],
+        report_to=["tensorboard"],
     )
     trainer = Trainer(
         model=model,
@@ -175,7 +177,8 @@ def train_qa_classifier(
         per_device_train_batch_size=int(config["training"]["per_device_train_batch_size"]),
         per_device_eval_batch_size=int(config["training"]["per_device_eval_batch_size"]),
         logging_steps=int(config["training"]["logging_steps"]),
-        report_to=[],
+        logging_dir=str(output_dir / "tb"),
+        report_to=["tensorboard"],
     )
 
     def compute_metrics(eval_pred: tuple[np.ndarray, np.ndarray]) -> dict[str, float]:
