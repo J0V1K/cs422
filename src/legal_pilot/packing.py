@@ -42,10 +42,18 @@ def generate_windows(
     for anchor_id in section_ids:
         anchor = section_by_id[anchor_id]
         chosen_ids = [anchor.section_id]
+        chosen_sources = ["ANCHOR"]
         exposure_count[anchor.section_id] += 1
         text_parts = [format_section(anchor)]
 
-        for candidate_id in _candidate_ids(condition, anchor_id, graph, similarity_index, section_by_id):
+        for candidate_id, candidate_source in _candidate_entries(
+            condition,
+            anchor_id,
+            graph,
+            similarity_index,
+            section_by_id,
+            section_ids,
+        ):
             if candidate_id in chosen_ids:
                 continue
             if exposure_count[candidate_id] >= target_exposures_per_section:
@@ -57,6 +65,7 @@ def generate_windows(
             if token_count > max_length:
                 continue
             chosen_ids.append(candidate_id)
+            chosen_sources.append(candidate_source)
             text_parts.append(candidate_text)
             exposure_count[candidate_id] += 1
             if len(chosen_ids) >= max_sections_per_window:
@@ -74,6 +83,7 @@ def generate_windows(
                 if token_count > max_length:
                     continue
                 chosen_ids.append(fallback_id)
+                chosen_sources.append("FALLBACK")
                 text_parts.append(format_section(fallback))
                 exposure_count[fallback_id] += 1
                 if len(chosen_ids) >= min_sections_per_window:
@@ -86,6 +96,7 @@ def generate_windows(
                 condition=condition,
                 anchor_id=anchor_id,
                 section_ids=chosen_ids,
+                section_sources=chosen_sources,
                 text=final_text,
                 token_count=final_token_count,
             )
@@ -93,33 +104,80 @@ def generate_windows(
     return windows
 
 
-def _candidate_ids(
+def summarize_windows(windows: list[WindowExample]) -> dict[str, object]:
+    source_counts: dict[str, int] = defaultdict(int)
+    non_anchor_source_counts: dict[str, int] = defaultdict(int)
+    num_windows_with_fallback = 0
+    total_sections = 0
+    total_non_anchor_sections = 0
+
+    for window in windows:
+        total_sections += len(window.section_ids)
+        if "FALLBACK" in window.section_sources:
+            num_windows_with_fallback += 1
+        for source in window.section_sources:
+            source_counts[source] += 1
+        for source in window.section_sources[1:]:
+            non_anchor_source_counts[source] += 1
+            total_non_anchor_sections += 1
+
+    return {
+        "num_windows": len(windows),
+        "avg_token_count": (
+            sum(window.token_count for window in windows) / len(windows) if windows else 0.0
+        ),
+        "avg_sections_per_window": (total_sections / len(windows)) if windows else 0.0,
+        "num_windows_with_fallback": num_windows_with_fallback,
+        "fallback_window_fraction": (
+            num_windows_with_fallback / len(windows) if windows else 0.0
+        ),
+        "source_counts": dict(sorted(source_counts.items())),
+        "non_anchor_source_counts": dict(sorted(non_anchor_source_counts.items())),
+        "non_anchor_source_fractions": {
+            source: count / total_non_anchor_sections
+            for source, count in sorted(non_anchor_source_counts.items())
+        },
+    }
+
+
+def _candidate_entries(
     condition: str,
     anchor_id: str,
     graph: nx.Graph,
     similarity_index: dict[str, list[str]],
     section_by_id: dict[str, SectionRecord],
-) -> list[str]:
-    if condition == 'random':
-        return list(section_by_id.keys())
-    if condition == 'embed-sim':
-        return similarity_index.get(anchor_id, [])
-    if condition == 'cite-graph':
+    shuffled_section_ids: list[str],
+) -> list[tuple[str, str]]:
+    if condition == "random":
+        return [
+            (section_id, "RANDOM_POOL")
+            for section_id in shuffled_section_ids
+            if section_id in section_by_id
+        ]
+    if condition == "embed-sim":
+        return [
+            (section_id, "EMBED_SIM")
+            for section_id in similarity_index.get(anchor_id, [])
+            if section_id in section_by_id
+        ]
+    if condition == "citation-only":
         return _ordered_unique(
-            _neighbors_by_edge_type(graph, anchor_id, 'REFERENCES', section_by_id)
-            + _neighbors_by_edge_type(graph, anchor_id, 'NEXT_SECTION', section_by_id)
-            + _neighbors_by_edge_type(graph, anchor_id, 'SAME_ARTICLE', section_by_id)
-            + _neighbors_by_edge_type(graph, anchor_id, 'SAME_CHAPTER', section_by_id),
-            section_by_id,
+            _neighbors_by_edge_type(graph, anchor_id, "REFERENCES", section_by_id)
         )
-    if condition == 'hierarchy-pack':
+    if condition == "cite-graph":
         return _ordered_unique(
-            _neighbors_by_edge_type(graph, anchor_id, 'SAME_ARTICLE', section_by_id)
-            + _neighbors_by_edge_type(graph, anchor_id, 'NEXT_SECTION', section_by_id)
-            + _neighbors_by_edge_type(graph, anchor_id, 'SAME_CHAPTER', section_by_id),
-            section_by_id,
+            _neighbors_by_edge_type(graph, anchor_id, "REFERENCES", section_by_id)
+            + _neighbors_by_edge_type(graph, anchor_id, "NEXT_SECTION", section_by_id)
+            + _neighbors_by_edge_type(graph, anchor_id, "SAME_ARTICLE", section_by_id)
+            + _neighbors_by_edge_type(graph, anchor_id, "SAME_CHAPTER", section_by_id)
         )
-    raise ValueError(f'Unsupported condition: {condition}')
+    if condition == "hierarchy-pack":
+        return _ordered_unique(
+            _neighbors_by_edge_type(graph, anchor_id, "SAME_ARTICLE", section_by_id)
+            + _neighbors_by_edge_type(graph, anchor_id, "NEXT_SECTION", section_by_id)
+            + _neighbors_by_edge_type(graph, anchor_id, "SAME_CHAPTER", section_by_id)
+        )
+    raise ValueError(f"Unsupported condition: {condition}")
 
 
 def _neighbors_by_edge_type(
@@ -127,26 +185,25 @@ def _neighbors_by_edge_type(
     anchor_id: str,
     edge_type: str,
     section_by_id: dict[str, SectionRecord],
-) -> list[str]:
+) -> list[tuple[str, str]]:
     matches = [
         neighbor_id
         for neighbor_id in graph.neighbors(anchor_id)
         if has_edge_type(graph, anchor_id, neighbor_id, edge_type)
     ]
-    return _sort_section_ids(matches, section_by_id)
+    sorted_matches = _sort_section_ids(matches, section_by_id)
+    return [(neighbor_id, edge_type) for neighbor_id in sorted_matches]
 
 
-def _ordered_unique(section_ids: list[str], section_by_id: dict[str, SectionRecord]) -> list[str]:
-    ordered: list[str] = []
+def _ordered_unique(entries: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    ordered: list[tuple[str, str]] = []
     seen: set[str] = set()
-    for section_id in section_ids:
+    for section_id, source in entries:
         if section_id in seen:
             continue
-        if section_id not in section_by_id:
-            continue
         seen.add(section_id)
-        ordered.append(section_id)
-    return _sort_section_ids(ordered, section_by_id)
+        ordered.append((section_id, source))
+    return ordered
 
 
 def _sort_section_ids(section_ids: list[str], section_by_id: dict[str, SectionRecord]) -> list[str]:
@@ -162,5 +219,5 @@ def _sort_section_ids(section_ids: list[str], section_by_id: dict[str, SectionRe
 
 
 def _section_sort_key(value: str) -> tuple[int, ...]:
-    parts = value.split('.')
+    parts = value.split(".")
     return tuple(int(part) if part.isdigit() else 0 for part in parts)

@@ -7,7 +7,7 @@ from legal_pilot.embed import build_similarity_index
 from legal_pilot.evaluation import compute_probe_metrics, evaluate_qa_classifier, split_qa_examples
 from legal_pilot.graphing import build_section_graph, compute_graph_stats, save_citation_graph_visualization
 from legal_pilot.io import ensure_dir, load_qa, load_sections, save_json, save_windows
-from legal_pilot.packing import generate_windows
+from legal_pilot.packing import generate_windows, summarize_windows
 from legal_pilot.splits import build_leakage_safe_split
 from legal_pilot.training import train_mlm, train_qa_classifier
 
@@ -71,15 +71,7 @@ def run_pipeline(config: dict) -> None:
             seed=int(config['training']['seed']),
         )
         save_windows(condition_dir / 'windows.jsonl', windows)
-        save_json(
-            condition_dir / 'window_stats.json',
-            {
-                'num_windows': len(windows),
-                'avg_token_count': (
-                    sum(window.token_count for window in windows) / len(windows) if windows else 0.0
-                ),
-            },
-        )
+        save_json(condition_dir / 'window_stats.json', summarize_windows(windows))
         if config['training']['enabled']:
             artifacts = train_mlm(
                 model_name=config['model']['name'],

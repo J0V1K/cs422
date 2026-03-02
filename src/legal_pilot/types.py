@@ -39,6 +39,7 @@ class WindowExample:
     condition: str
     anchor_id: str
     section_ids: list[str]
+    section_sources: list[str]
     text: str
     token_count: int
 

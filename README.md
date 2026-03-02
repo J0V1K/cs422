@@ -5,10 +5,11 @@ Minimal runnable scaffold for the overnight pilot in
 
 ## What this does
 
-The pipeline supports four conditions:
+The pipeline supports five conditions:
 
 - `random`
 - `embed-sim`
+- `citation-only`
 - `cite-graph`
 - `hierarchy-pack`
 
@@ -135,5 +136,6 @@ Each line should contain:
 - The citation probe is the primary overnight metric. QA is optional and requires labeled examples.
 - The default embedding backend for `embed-sim` uses TF-IDF to avoid a second large model download during pilot runs.
 - Each pipeline run now saves `graph_stats.json` and `citation_graph.png` in the output directory.
+- Each condition now saves `window_stats.json` with source-type composition and fallback usage.
 - MLM training logs are written to TensorBoard under each condition's `tb/` directory.
 - The GPU configs keep one retained checkpoint per condition plus the final saved model.

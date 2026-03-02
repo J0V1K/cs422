@@ -69,6 +69,7 @@ def save_windows(path: str | Path, windows: list[WindowExample]) -> None:
             "condition": item.condition,
             "anchor_id": item.anchor_id,
             "section_ids": item.section_ids,
+            "section_sources": item.section_sources,
             "text": item.text,
             "token_count": item.token_count,
         }

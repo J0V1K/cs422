@@ -40,7 +40,7 @@ qa:
 
 training:
   enabled: true
-  conditions: ["random", "hierarchy-pack", "cite-graph"]
+  conditions: ["random", "citation-only", "hierarchy-pack", "cite-graph"]
   seed: 42
   learning_rate: 5.0e-5
   weight_decay: 0.01

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 import random
 from collections import defaultdict
 from pathlib import Path
@@ -21,15 +20,66 @@ def compute_probe_metrics(
     candidate_pool_size: int,
     recall_ks: list[int],
     seed: int,
-) -> dict[str, float]:
+) -> dict[str, object]:
     if not probe_edges:
-        return {"num_edges": 0}
+        return {"overall": {"num_edges": 0}}
     tokenizer = AutoTokenizer.from_pretrained(model_dir)
     model = AutoModel.from_pretrained(model_dir)
     section_by_id = {section.section_id: section for section in sections}
     embeddings = _embed_sections(model, tokenizer, sections)
+
+    same_chapter_edges = [
+        edge
+        for edge in probe_edges
+        if _share_chapter(edge, section_by_id)
+    ]
+    cross_chapter_edges = [
+        edge
+        for edge in probe_edges
+        if not _share_chapter(edge, section_by_id)
+    ]
+
+    return {
+        "overall": _compute_metrics_for_edges(
+            embeddings=embeddings,
+            section_ids=list(section_by_id.keys()),
+            probe_edges=probe_edges,
+            candidate_pool_size=candidate_pool_size,
+            recall_ks=recall_ks,
+            seed=seed,
+        ),
+        "same_chapter": _compute_metrics_for_edges(
+            embeddings=embeddings,
+            section_ids=list(section_by_id.keys()),
+            probe_edges=same_chapter_edges,
+            candidate_pool_size=candidate_pool_size,
+            recall_ks=recall_ks,
+            seed=seed,
+        ),
+        "cross_chapter": _compute_metrics_for_edges(
+            embeddings=embeddings,
+            section_ids=list(section_by_id.keys()),
+            probe_edges=cross_chapter_edges,
+            candidate_pool_size=candidate_pool_size,
+            recall_ks=recall_ks,
+            seed=seed,
+        ),
+    }
+
+
+def _compute_metrics_for_edges(
+    *,
+    embeddings: dict[str, np.ndarray],
+    section_ids: list[str],
+    probe_edges: list[CitationEdge],
+    candidate_pool_size: int,
+    recall_ks: list[int],
+    seed: int,
+) -> dict[str, float]:
+    if not probe_edges:
+        return {"num_edges": 0}
+
     rng = random.Random(seed)
-    section_ids = list(section_by_id.keys())
     ranks: list[int] = []
     for edge in probe_edges:
         if edge.source_id not in embeddings or edge.target_id not in embeddings:
@@ -57,6 +107,14 @@ def compute_probe_metrics(
     for k in recall_ks:
         metrics[f"recall@{k}"] = float(np.mean([1.0 if rank <= k else 0.0 for rank in ranks]))
     return metrics
+
+
+def _share_chapter(edge: CitationEdge, section_by_id: dict[str, SectionRecord]) -> bool:
+    source = section_by_id.get(edge.source_id)
+    target = section_by_id.get(edge.target_id)
+    if not source or not target:
+        return False
+    return (source.code_name, source.chapter) == (target.code_name, target.chapter)
 
 
 def _embed_sections(
