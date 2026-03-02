@@ -41,10 +41,12 @@ def generate_windows(
 
     for anchor_id in section_ids:
         anchor = section_by_id[anchor_id]
+        anchor_text = format_section(anchor)
+        anchor_text, _, anchor_was_truncated = _fit_to_max_length(tokenizer, anchor_text, max_length)
         chosen_ids = [anchor.section_id]
-        chosen_sources = ["ANCHOR"]
+        chosen_sources = ["ANCHOR_TRUNCATED" if anchor_was_truncated else "ANCHOR"]
         exposure_count[anchor.section_id] += 1
-        text_parts = [format_section(anchor)]
+        text_parts = [anchor_text]
 
         for candidate_id, candidate_source in _candidate_entries(
             condition,
@@ -221,3 +223,25 @@ def _sort_section_ids(section_ids: list[str], section_by_id: dict[str, SectionRe
 def _section_sort_key(value: str) -> tuple[int, ...]:
     parts = value.split(".")
     return tuple(int(part) if part.isdigit() else 0 for part in parts)
+
+
+def _fit_to_max_length(
+    tokenizer: AutoTokenizer,
+    text: str,
+    max_length: int,
+) -> tuple[str, int, bool]:
+    input_ids = tokenizer(text, truncation=False)["input_ids"]
+    token_count = len(input_ids)
+    if token_count <= max_length:
+        return text, token_count, False
+    truncated_ids = tokenizer(
+        text,
+        truncation=True,
+        max_length=max_length,
+    )["input_ids"]
+    truncated_text = tokenizer.decode(
+        truncated_ids,
+        skip_special_tokens=True,
+        clean_up_tokenization_spaces=False,
+    )
+    return truncated_text, len(truncated_ids), True
