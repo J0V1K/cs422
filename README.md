@@ -1,15 +1,16 @@
 # Structure-Aware Legal Pilot
 
 Minimal runnable scaffold for the overnight pilot in
-[structure_aware_pretraining_instructions.md](/Users/jovik/Desktop/cs422_project/structure_aware_pretraining_instructions.md).
+[structure_aware_pretraining_instructions.md](/Users/jovik/Desktop/cs422/structure_aware_pretraining_instructions.md).
 
 ## What this does
 
-The pipeline supports three conditions:
+The pipeline supports four conditions:
 
 - `random`
 - `embed-sim`
 - `cite-graph`
+- `hierarchy-pack`
 
 For each enabled condition it can:
 
@@ -39,9 +40,18 @@ python3 scripts/run_overnight_pilot.py --config configs/overnight_pilot.yaml
 
 Artifacts are written to `runs/overnight_pilot/`.
 
+## Research framing
+
+The paper-style motivation, related work positioning, method, experimental
+plan, and next steps live in
+[paper/legal_nlp_research_outline.md](/Users/jovik/Desktop/cs422/paper/legal_nlp_research_outline.md).
+That document is written as a conference-style legal NLP draft with explicit
+`Motivation`, `Background & Related Work`, `Proposed Method & Experiments`, and
+`Next Steps` sections.
+
 ## State codes mode
 
-Set `data.mode: hf_statecodes` in [configs/overnight_pilot.yaml](/Users/jovik/Desktop/cs422_project/configs/overnight_pilot.yaml).
+Set `data.mode: hf_statecodes` in [configs/overnight_pilot.yaml](/Users/jovik/Desktop/cs422/configs/overnight_pilot.yaml).
 
 The current default `hf` block is aimed at the California Civil Code landlord-tenant slice from `reglab/statecodes`. The loader pulls rows from:
 
@@ -62,7 +72,7 @@ If you want to add Code of Civil Procedure unlawful-detainer sections later, wid
 
 ## Real data mode
 
-Set `data.mode: jsonl` in [configs/overnight_pilot.yaml](/Users/jovik/Desktop/cs422_project/configs/overnight_pilot.yaml) and provide:
+Set `data.mode: jsonl` in [configs/overnight_pilot.yaml](/Users/jovik/Desktop/cs422/configs/overnight_pilot.yaml) and provide:
 
 - `data.sections_path`
 - `data.qa_path` if you want QA fine-tuning
@@ -106,3 +116,4 @@ Each line should contain:
 - The Hugging Face ingest for `reglab/statecodes` is implemented. California XML ingest is still not implemented.
 - The citation probe is the primary overnight metric. QA is optional and requires labeled examples.
 - The default embedding backend for `embed-sim` uses TF-IDF to avoid a second large model download during pilot runs.
+- Each pipeline run now saves `graph_stats.json` and `citation_graph.png` in the output directory.
