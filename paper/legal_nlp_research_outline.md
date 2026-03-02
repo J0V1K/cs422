@@ -50,12 +50,15 @@ should matter.
 Prior work on legal language models has shown that domain-adaptive pretraining
 can improve performance over general-purpose models, but most approaches still
 inherit the random or weakly structured document order of conventional NLP
-pipelines. Legal-BERT and related domain-adapted encoders demonstrated that
+pipelines. LEGAL-BERT and related domain-adapted encoders demonstrated that
 legal corpora matter, yet they did not directly encode the relational structure
-of statutes and cases into the pretraining curriculum. More recent work on
-structure-aware or context-aware pretraining in general NLP suggests that
-document order can shape learned representations, especially when neighboring
-documents reflect semantically coherent or causally linked information.
+of statutes and cases into the pretraining curriculum (Chalkidis et al., 2020).
+LexGLUE then provided a standardized benchmark showing that legal-oriented
+models consistently outperform generic ones across diverse legal NLU tasks
+(Chalkidis et al., 2022). More recent work on structure-aware or context-aware
+pretraining in general NLP suggests that document order can shape learned
+representations, especially when neighboring documents reflect semantically
+coherent or causally linked information (Shi et al., 2024; Zhao et al., 2024).
 
 This project sits at the intersection of three lines of work. The first is
 domain-adaptive legal pretraining, which established that legal text is a
@@ -67,6 +70,18 @@ links have long been recognized as central to legal analysis. What remains
 underexplored is whether explicit document relationships, especially citations,
 can be turned into a pretraining signal rather than only a retrieval or post-
 hoc explanation tool.
+
+On the evaluation side, several benchmarks motivate the choice of statutory and
+reasoning-heavy tasks. SARA and its follow-on analyses frame statutory
+reasoning as a difficult entailment and rule-application problem rather than a
+simple reading-comprehension task (Holzenberger et al., 2020; Holzenberger and
+Van Durme, 2021). CaseHOLD shows that legal-domain pretraining helps most on
+tasks that are genuinely close to the underlying legal corpus (Zheng et al.,
+2021). LegalBench broadens this picture by organizing legal reasoning into a
+large suite of task types designed with lawyers and legal scholars (Guha et
+al., 2023), while LegalBench-RAG highlights that retrieval quality is itself a
+separate bottleneck in practical legal reasoning systems (Pipitone and Houir
+Alami, 2024).
 
 Relative to this literature, the project makes a narrower but cleaner claim. It
 does not assume that long-context generative reasoning is required. Instead, it
@@ -80,6 +95,18 @@ In conference terms, the novelty is not a new architecture but a new
 experimental control. The hierarchy baseline makes it possible to argue for
 citation-aware pretraining specifically, rather than reporting gains that could
 be explained by ordinary legal document locality.
+
+This proposal also differs from prior graph-centric legal work. Existing legal
+graph methods typically use citation or statute structure at retrieval time,
+classification time, or as an explicit graph-learning signal, rather than as a
+minimal intervention on language-model pretraining order. Examples include
+heterogeneous-graph statute identification in LeSICiN, citation-network
+benchmarking in LeCNet, and knowledge-graph-enhanced statute retrieval in
+NyayGraph (Paul et al., 2021; Harde et al., 2025; Shukla et al., 2025). The
+closest conceptual analog outside law is SPECTER, which uses citation graphs to
+learn document representations in science (Cohan et al., 2020). Our setting is
+different: the goal is not document embedding from citation supervision, but
+encoder pretraining under controlled local co-occurrence regimes.
 
 ## Proposed Method & Experiments
 
@@ -175,3 +202,61 @@ end state is a legal NLP conference paper that makes a precise claim: short-
 context structure-aware pretraining improves statutory reasoning when the
 structural signal is defined by explicit legal document relationships and
 evaluated against leakage-safe baselines.
+
+## References
+
+- Chalkidis, Ilias, Manos Fergadiotis, Prodromos Malakasiotis, Nikolaos
+  Aletras, and Ion Androutsopoulos. 2020. "LEGAL-BERT: The Muppets straight
+  out of Law School." Findings of EMNLP 2020.
+  https://aclanthology.org/2020.findings-emnlp.261/
+- Chalkidis, Ilias, Abhik Jana, Dirk Hartung, Michael Bommarito, Ion
+  Androutsopoulos, Daniel Katz, and Nikolaos Aletras. 2022. "LexGLUE: A
+  Benchmark Dataset for Legal Language Understanding in English." ACL 2022.
+  https://aclanthology.org/2022.acl-long.297/
+- Cohan, Arman, Sergey Feldman, Iz Beltagy, Doug Downey, and Daniel Weld.
+  2020. "SPECTER: Document-level Representation Learning using
+  Citation-informed Transformers." ACL 2020.
+  https://aclanthology.org/2020.acl-main.207/
+- Guha, Neel, Julian Nyarko, Daniel E. Ho, Christopher Re, Adam Chilton, and
+  many others. 2023. "LegalBench: A Collaboratively Built Benchmark for
+  Measuring Legal Reasoning in Large Language Models." arXiv.
+  https://arxiv.org/abs/2308.11462
+- Harde, Pooja, Bhavya Jain, and Sarika Jain. 2025. "LeCNet: A Legal Citation
+  Network Benchmark Dataset." JUST-NLP 2025.
+  https://aclanthology.org/2025.justnlp-main.4/
+- Holzenberger, Nils, Andrew Blair-Stanek, and Benjamin Van Durme. 2020. "A
+  Dataset for Statutory Reasoning in Tax Law Entailment and Question
+  Answering." arXiv.
+  https://arxiv.org/abs/2005.05257
+- Holzenberger, Nils, and Benjamin Van Durme. 2021. "Factoring Statutory
+  Reasoning as Language Understanding Challenges." ACL-IJCNLP 2021.
+  https://aclanthology.org/2021.acl-long.213/
+- Paul, Shounak, Pawan Goyal, and Saptarshi Ghosh. 2021. "LeSICiN: A
+  Heterogeneous Graph-based Approach for Automatic Legal Statute
+  Identification from Indian Legal Documents." arXiv.
+  https://arxiv.org/abs/2112.14731
+- Pipitone, Nicholas, and Ghita Houir Alami. 2024. "LegalBench-RAG: A
+  Benchmark for Retrieval-Augmented Generation in the Legal Domain." arXiv.
+  https://arxiv.org/abs/2408.10343
+- Rabelo, Juliano, Randy Goebel, Mi-Young Kim, Masaharu Yoshioka, Yoshinobu
+  Kano, and Ken Satoh. 2022. "Overview and Discussion of the Competition on
+  Legal Information Extraction/Entailment (COLIEE) 2021." Review of
+  Socionetwork Strategies.
+  https://doi.org/10.1007/s12626-022-00105-z
+- Shi, Weijia, Sewon Min, Maria Lomeli, Chunting Zhou, Margaret Li, Gergely
+  Szilvasy, Rich James, Xi Victoria Lin, Noah A. Smith, Luke Zettlemoyer,
+  Scott Yih, and Mike Lewis. 2024. "In-context Pretraining: Language Modeling
+  Beyond Document Boundaries." arXiv.
+  https://arxiv.org/abs/2310.10638
+- Shukla, Siddharth, Tanuj Tyagi, Abhay Singh Bisht, Ashish Sharma, and Basant
+  Agarwal. 2025. "NyayGraph: A Knowledge Graph Enhanced Approach for Legal
+  Statute Identification in Indian Law using Large Language Models." NLLP
+  2025. https://aclanthology.org/2025.nllp-1.11/
+- Zheng, Lucia, Neel Guha, Brandon R. Anderson, Peter Henderson, and Daniel E.
+  Ho. 2021. "When Does Pretraining Help? Assessing Self-Supervised Learning
+  for Law and the CaseHOLD Dataset." ICAIL 2021.
+  https://arxiv.org/abs/2104.08671
+- Zhao, Yu, Yuanbin Qu, Konrad Staniszewski, Szymon Tworkowski, Wei Liu,
+  Piotr Milos, Yuxiang Wu, and Pasquale Minervini. 2024. "Analysing The
+  Impact of Sequence Composition on Language Model Pre-Training." arXiv.
+  https://arxiv.org/abs/2402.13991
