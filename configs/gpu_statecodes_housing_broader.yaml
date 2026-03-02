@@ -1,0 +1,59 @@
+experiment_name: gpu_statecodes_housing_broader
+output_dir: runs/gpu_statecodes_housing_broader
+
+data:
+  mode: hf_statecodes
+  sections_path: null
+  qa_path: null
+  holdout_fraction: 0.2
+  exclusion_hops: 1
+  hf:
+    dataset_name: reglab/statecodes
+    config_name: all_codes
+    split: train
+    state: CA
+    code_filters: ["Civil Code - CIV", "Code of Civil Procedure - CCP"]
+    include_patterns:
+      - "CHAPTER 2 - Hiring of Real Property"
+      - "Section 194[0-9]"
+      - "Section 195[0-9]"
+      - "Unlawful Detainer"
+      - "Section 1159"
+      - "Section 116[0-9]"
+      - "Section 117[0-9]"
+    exclude_patterns: []
+    limit: null
+
+model:
+  name: distilbert-base-uncased
+  max_length: 512
+  mlm_probability: 0.15
+
+packing:
+  min_sections_per_window: 2
+  max_sections_per_window: 4
+  target_exposures_per_section: 4
+
+probe:
+  candidate_pool_size: 50
+  recall_ks: [1, 5, 10]
+
+qa:
+  enabled: false
+  max_train_examples: null
+
+training:
+  enabled: true
+  conditions: ["random", "citation-only", "hierarchy-pack", "cite-graph"]
+  seed: 42
+  learning_rate: 5.0e-5
+  weight_decay: 0.01
+  warmup_ratio: 0.1
+  num_train_epochs: 2
+  per_device_train_batch_size: 16
+  per_device_eval_batch_size: 16
+  gradient_accumulation_steps: 1
+  logging_steps: 10
+  save_strategy: epoch
+  save_total_limit: 1
+  fp16: true
